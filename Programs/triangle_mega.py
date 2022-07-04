@@ -1,5 +1,6 @@
 import snap
 import time
+import pandas as pd
 
 def algorithm(G,D, tri_dict):
     #Graph Pruning Step
@@ -95,19 +96,52 @@ def algorithm(G,D, tri_dict):
                 
     return tri_dict
 
-#Threshold D
-D = 2
-tri_dict = {}
-G = snap.LoadEdgeList(snap.TUNGraph, "test3.txt", 0, 1)
-for NI in G.Nodes():
-    NID=NI.GetId()
-    if G.IsEdge(NID,NID):
-        G.DelEdge(NID,NID)   
+graphDF = pd.read_csv('tweets_graph.csv', encoding = "latin-1")
+
+allNamesList = []     
+for index, row in graphDF.iterrows():
+    src = row['Src']
+    dst = row['Dst']
+    allNamesList.append(src)
+    allNamesList.append(dst)
+
+allNamesList = list(set(allNamesList))
+
+indexToNameDict = {}
+for index, val in enumerate(allNamesList):
+    indexToNameDict[index] = val
+
+NameToIndexDict = {}
+for index, val in enumerate(allNamesList):
+    NameToIndexDict[val] = index
+
+srcList = []
+complete_G = snap.TUNGraph.New()
+for index, row in graphDF.iterrows():
+    src = row['Src']
+    dst = row['Dst']
+    src = NameToIndexDict[src]
+    dst = NameToIndexDict[dst]
+    if not complete_G.IsNode(src):
+        complete_G.AddNode(src)
+    if not complete_G.IsNode(dst):
+        complete_G.AddNode(dst)
+    complete_G.AddEdge(src, dst)
+    srcList.append(src)
+
+tri_dict = {}    
+for NI in complete_G.Nodes():
+    NID = NI.GetId()
+    if complete_G.IsEdge(NID, NID):
+        complete_G.DelEdge(NID, NID)
     if NID not in tri_dict:
         tri_dict[NID] = 0
+        
+D = 15
+
 tStart = time.time()
-#Output the number of triangles in G
-print( algorithm(G,D, tri_dict))
+#Output the number of triangles of all vertices in G
+algorithm(complete_G, D, tri_dict)
 tEnd = time.time()
-#The time spent while we set threshold=D in the pruning step
+#The time spent while we set threshold=D in the graph pruning step
 print( tEnd - tStart)
